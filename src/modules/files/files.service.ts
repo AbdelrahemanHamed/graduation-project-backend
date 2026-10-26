@@ -6,7 +6,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
-import { StorageService } from '../storage/storage.service.js';
+import { StorageService, UploadedMulterFile } from '../storage/storage.service.js';
 import { ActivityService } from '../activity/activity.service.js';
 import { UpdateFileDto } from './dto/update-file.dto.js';
 import { MoveFileDto } from './dto/move-file.dto.js';
@@ -79,7 +79,7 @@ export class FilesService {
   /**
    * Upload file with quota enforcement and SHA-256 deduplication
    */
-  async uploadFile(userId: string, multerFile: Express.Multer.File, folderId?: string) {
+  async uploadFile(userId: string, multerFile: UploadedMulterFile, folderId?: string) {
     if (!multerFile) {
       throw new BadRequestException('No file provided');
     }

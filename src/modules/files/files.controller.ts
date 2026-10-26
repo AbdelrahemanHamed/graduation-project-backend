@@ -13,7 +13,7 @@ import {
   UseInterceptors,
   UploadedFile,
 } from '@nestjs/common';
-import { Response } from 'express';
+import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
@@ -28,6 +28,7 @@ import { UpdateFileDto } from './dto/update-file.dto.js';
 import { MoveFileDto } from './dto/move-file.dto.js';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
+import type { UploadedMulterFile } from '../storage/storage.service.js';
 
 @ApiTags('Files')
 @ApiBearerAuth()
@@ -51,7 +52,7 @@ export class FilesController {
   })
   async upload(
     @CurrentUser('id') userId: string,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile() file: UploadedMulterFile,
     @Body('folderId') folderId?: string,
   ) {
     return this.filesService.uploadFile(userId, file, folderId);

@@ -141,14 +141,15 @@ export class FoldersService {
     let currentId: string | null = folderId;
 
     while (currentId) {
-      const folder = await this.prisma.folder.findUnique({
-        where: { id: currentId },
-        select: { id: true, name: true, parentId: true },
-      });
+      const currentItem: { id: string; name: string; parentId: string | null } | null =
+        await this.prisma.folder.findUnique({
+          where: { id: currentId },
+          select: { id: true, name: true, parentId: true },
+        });
 
-      if (!folder) break;
-      crumbs.unshift({ id: folder.id, name: folder.name });
-      currentId = folder.parentId;
+      if (!currentItem) break;
+      crumbs.unshift({ id: currentItem.id, name: currentItem.name });
+      currentId = currentItem.parentId;
     }
 
     return crumbs;
@@ -180,11 +181,11 @@ export class FoldersService {
         if (checkId === folderId) {
           throw new BadRequestException('Cannot move a folder into one of its own subfolders');
         }
-        const parent = await this.prisma.folder.findUnique({
+        const parentNode: { parentId: string | null } | null = await this.prisma.folder.findUnique({
           where: { id: checkId },
           select: { parentId: true },
         });
-        checkId = parent?.parentId || null;
+        checkId = parentNode?.parentId || null;
       }
     }
 

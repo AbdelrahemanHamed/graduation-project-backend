@@ -4,6 +4,15 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 
+export interface UploadedMulterFile {
+  fieldname: string;
+  originalname: string;
+  encoding: string;
+  mimetype: string;
+  size: number;
+  buffer: Buffer;
+}
+
 export interface SavedFileResult {
   storageKey: string;
   checksum: string;
@@ -33,7 +42,7 @@ export class StorageService {
   /**
    * Saves a file buffer to disk. Returns unique storage key and SHA-256 checksum.
    */
-  async saveFile(file: Express.Multer.File): Promise<SavedFileResult> {
+  async saveFile(file: UploadedMulterFile): Promise<SavedFileResult> {
     const checksum = this.calculateChecksum(file.buffer);
     const ext = path.extname(file.originalname);
     const filename = `${uuidv4()}${ext}`;
