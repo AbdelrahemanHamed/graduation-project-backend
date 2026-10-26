@@ -1,125 +1,259 @@
+# ☁️ Google Drive Clone — Cloud Storage & Collaboration Engine
+
 <p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
+  <img src="https://img.shields.io/badge/NestJS-E0234E?style=for-the-badge&logo=nestjs&logoColor=white" alt="NestJS" />
+  <img src="https://img.shields.io/badge/Prisma-2D3748?style=for-the-badge&logo=prisma&logoColor=white" alt="Prisma" />
+  <img src="https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" />
+  <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/JWT-black?style=for-the-badge&logo=JSON%20web%20tokens" alt="JWT" />
+  <img src="https://img.shields.io/badge/Swagger-85EA2D?style=for-the-badge&logo=Swagger&logoColor=black" alt="Swagger" />
 </p>
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A production-grade, Google Drive-style cloud storage and team collaboration backend built for an Academic Graduation Project. Designed with **NestJS**, **Prisma ORM**, and **PostgreSQL**, this engine powers hierarchical file & folder organization, media streaming, granular email-based permissions, expiring public links, and storage deduplication.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+---
 
-## Description
+## 🌟 Key Features
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+### 📁 1. Recursive Folder Hierarchy & Breadcrumbs
+- Self-referencing recursive tree structure supporting infinitely nested folders.
+- Real-time breadcrumb trail generation (`/Root / College / Semester 1 / Project`).
+- Intelligent **cycle-detection** preventing circular dependencies when moving folders into their own subtrees.
+- Custom folder UI color tags and starring.
 
-## Project setup
+### 👥 2. Granular Collaboration & Email Sharing (Google Drive Style)
+- **Direct User Sharing**: Grant access to any registered user by their email address.
+- **Granular Roles**:
+  - `VIEWER`: Read-only, preview, stream, and download.
+  - `EDITOR`: Upload files, rename, move, and manage items inside the shared folder.
+- **Shared With Me View**: Dedicated view querying all resources shared directly with the authenticated user.
+- **Collaborator Autocomplete**: Instant endpoint to search registered users by email or name.
 
-```bash
-$ npm install
+### 🔗 3. Public Shareable Links
+- Generate shareable public URL tokens for folders or files without requiring login.
+- **Password Protection**: Optional bcrypt-hashed passwords for public links.
+- **Time-based Expiration**: Set link expiration timestamps (`expiresAt`).
+- **Download Limits**: Restrict max download attempts per link with atomic counters.
+
+### ⚡ 4. Storage Deduplication (SHA-256) & Quota Enforcement
+- **SHA-256 Hash Matching**: Detects duplicate uploaded files across the system and reuses existing disk storage blobs, dramatically saving storage.
+- **Storage Quotas**: Default 5 GB free storage allocated per user, enforced before accepting binary payloads.
+- **Storage Analytics**: Real-time breakdown of storage consumption across **Images**, **Videos**, **Documents**, and **Others**.
+
+### 🎥 5. HTTP Range Video & Audio Streaming
+- Implements HTTP Range headers (`206 Partial Content`).
+- Allows clients to scrub and stream video/audio directly in modern web players without downloading the full media file.
+
+### 🗑️ 6. Trash Bin (Soft Delete) & 1-Click Restore
+- Safe two-step deletion: items first move to Trash with soft delete timestamps.
+- One-click restore preserves folder associations.
+- Permanent deletion automatically reclaims user storage quota and cleans orphaned storage keys.
+
+### 📜 7. Audit Trail & Activity Logs
+- Comprehensive activity tracking: `UPLOAD`, `DOWNLOAD`, `RENAME`, `MOVE`, `DELETE`, `RESTORE`, `SHARE`, and `REVOKE_SHARE`.
+
+---
+
+## 🏛️ System Architecture
+
+```mermaid
+graph TD
+    Client[Web / Mobile Client] -->|Bearer JWT| NestAPI[NestJS REST API]
+    
+    subgraph Core Modules
+        NestAPI --> Auth[Auth & Users Module]
+        NestAPI --> Folders[Folders Module]
+        NestAPI --> Files[Files & Media Streaming]
+        NestAPI --> Sharing[Sharing & Public Links]
+        NestAPI --> Search[Unified Search Engine]
+        NestAPI --> Activity[Activity Audit Log]
+    end
+
+    Files --> StorageEngine[Storage Engine + SHA-256 Deduplication]
+    StorageEngine --> DiskStorage[(Physical Disk /uploads)]
+
+    Folders --> PrismaORM[Prisma ORM Client]
+    Files --> PrismaORM
+    Sharing --> PrismaORM
+    Auth --> PrismaORM
+    Activity --> PrismaORM
+
+    PrismaORM --> Postgres[(PostgreSQL Database)]
 ```
 
-## Compile and run the project
+---
 
+## 🗄️ Database Schema Summary
+
+The database is managed with **Prisma ORM** targeting **PostgreSQL**:
+
+- **`User`**: Account credentials, JWT identity, avatar, `storageUsed`, and `storageLimit`.
+- **`Folder`**: Recursive tree (`parentId`), owner, color, star, and trash state.
+- **`File`**: Name, original filename, mimeType, size in bytes, disk `storageKey`, and SHA-256 `checksum`.
+- **`SharedAccess`**: Maps `userId` to `fileId` or `folderId` with `VIEWER` or `EDITOR` role.
+- **`ShareLink`**: Tokenized public links with optional password hash, expiration, and download limits.
+- **`FileVersion`**: Historical file revisions.
+- **`ActivityLog`**: Audit trail recording user interactions on resources.
+
+---
+
+## 🚀 Quick Start Guide
+
+### Prerequisites
+- [Node.js](https://nodejs.org/) (v18 or higher recommended)
+- [PostgreSQL](https://www.postgresql.org/) running locally or via Docker
+
+### 1. Clone the repository
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+git clone https://github.com/AbdelrahemanHamed/graduation-project-backend.git
+cd graduation-project-backend
 ```
 
-## Run tests
-
+### 2. Install dependencies
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm install
 ```
 
-## Deployment
+### 3. Configure environment variables
+Create a `.env` file in the project root:
+```env
+PORT=3000
+NODE_ENV=development
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+# PostgreSQL connection string
+DATABASE_URL="postgresql://postgres:YOUR_PASSWORD@localhost:5432/grad_project_drive?schema=public"
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+# JWT configuration
+JWT_SECRET="super-secret-jwt-graduation-key-change-in-production"
+JWT_EXPIRES_IN="7d"
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+# Local Storage directory
+UPLOAD_DIR="uploads"
+
+# Default Storage Quota: 5GB (in bytes)
+DEFAULT_STORAGE_LIMIT_BYTES=5368709120
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Observability
-
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
-
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
-
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
-
-To add it to this project:
-
+### 4. Push database migrations
 ```bash
-$ npm install @nestjs/observe
+npx prisma db push
 ```
 
-Then follow the [setup guide](https://docs.nestjs.com/observability/overview) - it takes a single import and an app key.
+### 5. Start the development server
+```bash
+npm run start:dev
+```
 
-The free plan needs no payment details and covers 300,000 events a month. You can also browse the [live demo](https://www.observe-demo.nestjs.com/dashboard) first - the whole dashboard over a busy service's data, with nothing to install.
+The server will boot up at `http://localhost:3000/api`.
 
-## Resources
+---
 
-Check out a few resources that may come in handy when working with NestJS:
+## 📚 Interactive Swagger API Documentation
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observe](https://observe.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+Once the server is running, explore and test every API endpoint directly in your browser:
 
-## Support
+👉 **[http://localhost:3000/api/docs](http://localhost:3000/api/docs)**
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+---
 
-## Stay in touch
+## 📡 API Endpoints Reference
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+### 🔐 Authentication (`/api/auth`)
+| Method | Endpoint | Description | Auth |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/auth/register` | Register new account (allocates 5GB quota) | Public |
+| `POST` | `/api/auth/login` | Authenticate and obtain JWT token | Public |
+| `GET` | `/api/auth/profile` | Get current user profile and quota state | Bearer JWT |
 
-## License
+### 👥 Users & Search (`/api/users`)
+| Method | Endpoint | Description | Auth |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/users/search?q=` | Collaborator autocomplete by email or name | Bearer JWT |
+| `GET` | `/api/users/storage-stats` | Storage analytics and breakdown by file type | Bearer JWT |
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
-# graduation-project-backend
+### 📁 Folders (`/api/folders`)
+| Method | Endpoint | Description | Auth |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/folders` | Create folder (root or nested) | Bearer JWT |
+| `GET` | `/api/folders?folderId=` | List folder contents (folders & files) | Bearer JWT |
+| `GET` | `/api/folders/breadcrumbs/:id` | Get breadcrumb navigation trail | Bearer JWT |
+| `PATCH` | `/api/folders/:id/move` | Move folder with cycle prevention | Bearer JWT |
+| `PATCH` | `/api/folders/:id` | Rename, change color, or star folder | Bearer JWT |
+| `DELETE`| `/api/folders/:id/trash` | Soft-delete folder to Trash | Bearer JWT |
+| `PATCH` | `/api/folders/:id/restore` | Restore folder from Trash | Bearer JWT |
+| `DELETE`| `/api/folders/:id/permanent` | Permanently delete folder | Bearer JWT |
+| `GET` | `/api/folders/starred` | List all starred folders | Bearer JWT |
+| `GET` | `/api/folders/trash` | List all trashed folders | Bearer JWT |
+
+### 📄 Files (`/api/files`)
+| Method | Endpoint | Description | Auth |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/files/upload` | Upload file (`file`, optional `folderId`) | Bearer JWT |
+| `GET` | `/api/files/:id` | Get file metadata | Bearer JWT |
+| `GET` | `/api/files/:id/download` | Download file with attachment headers | Bearer JWT |
+| `GET` | `/api/files/:id/stream` | Stream video/audio with HTTP Range 206 | Bearer JWT |
+| `PATCH` | `/api/files/:id/move` | Move file to another folder or root | Bearer JWT |
+| `PATCH` | `/api/files/:id` | Rename or star file | Bearer JWT |
+| `DELETE`| `/api/files/:id/trash` | Move file to Trash | Bearer JWT |
+| `PATCH` | `/api/files/:id/restore` | Restore file from Trash | Bearer JWT |
+| `DELETE`| `/api/files/:id/permanent` | Permanent delete and reclaim quota | Bearer JWT |
+| `GET` | `/api/files/starred` | List all starred files | Bearer JWT |
+| `GET` | `/api/files/trash` | List all trashed files | Bearer JWT |
+
+### 🔗 Sharing & Collaboration (`/api/sharing`)
+| Method | Endpoint | Description | Auth |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/sharing/email` | Share file/folder with user by email | Bearer JWT |
+| `DELETE`| `/api/sharing/access/:id` | Revoke collaborator access | Bearer JWT |
+| `GET` | `/api/sharing/collaborators` | List users who have access | Bearer JWT |
+| `GET` | `/api/sharing/shared-with-me` | Get files/folders shared with user | Bearer JWT |
+| `POST` | `/api/sharing/link` | Create public share link (password, expiry) | Bearer JWT |
+| `POST` | `/api/sharing/public/:token` | Resolve public share link | Public |
+| `POST` | `/api/sharing/public/:token/download` | Download file via public link | Public |
+
+### 🔍 Search & Audit (`/api/search` & `/api/activity`)
+| Method | Endpoint | Description | Auth |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/search?q=&type=&isStarred=` | Unified search across files & folders | Bearer JWT |
+| `GET` | `/api/activity/recent?limit=` | Recent audit log of actions | Bearer JWT |
+
+---
+
+## 📂 Project Structure
+
+```
+graduation-project-backend/
+├── prisma/
+│   └── schema.prisma         # Prisma Schema (Models & Relations)
+├── src/
+│   ├── app.module.ts         # Root Application Module
+│   ├── main.ts               # App entrypoint (Swagger, CORS, BigInt handler)
+│   ├── common/
+│   │   ├── decorators/       # @CurrentUser() param decorator
+│   │   ├── filters/          # AllExceptionsFilter
+│   │   ├── guards/           # JwtAuthGuard
+│   │   └── interceptors/     # TransformInterceptor
+│   ├── prisma/
+│   │   ├── prisma.module.ts
+│   │   └── prisma.service.ts # Prisma Client lifecycle manager
+│   └── modules/
+│       ├── activity/         # Audit trail service & controller
+│       ├── auth/             # JWT Auth, Bcrypt, Login & Register
+│       ├── files/            # File upload, streaming & lifecycle
+│       ├── folders/          # Nested folder trees & breadcrumbs
+│       ├── search/           # Multi-criteria search
+│       ├── sharing/          # Email sharing & public link tokens
+│       ├── storage/          # Local disk storage & SHA-256 deduplication
+│       └── users/            # User profile, search & quota analytics
+├── .env.example
+├── package.json
+└── README.md
+```
+
+---
+
+## 👨‍💻 Author & Credits
+
+- **Project**: Graduation Project — Cloud Drive Storage Backend
+- **Repository**: [graduation-project-backend](https://github.com/AbdelrahemanHamed/graduation-project-backend)
+- **Author**: Abdelraheman Hamed
