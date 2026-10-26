@@ -1,0 +1,210 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// -------------------------------------------------------------
+// ENUMS
+// -------------------------------------------------------------
+enum Role {
+  USER
+  ADMIN
+}
+
+enum PermissionRole {
+  VIEWER
+  EDITOR
+}
+
+enum ResourceType {
+  FILE
+  FOLDER
+}
+
+enum ActivityAction {
+  UPLOAD
+  DOWNLOAD
+  RENAME
+  MOVE
+  DELETE
+  RESTORE
+  SHARE
+  REVOKE_SHARE
+}
+
+// -------------------------------------------------------------
+// USER & STORAGE QUOTA
+// -------------------------------------------------------------
+model User {
+  id               String          @id @default(uuid())
+  email            String          @unique
+  passwordHash     String
+  name             String
+  avatarUrl        String?
+  role             Role            @default(USER)
+
+  // Storage Quota (in bytes) - Default 5 GB (5 * 1024 * 1024 * 1024)
+  storageUsed      BigInt          @default(0)
+  storageLimit     BigInt          @default(5368709120)
+
+  // Relationships
+  ownedFiles       File[]          @relation("FileOwner")
+  ownedFolders     Folder[]        @relation("FolderOwner")
+  sharedAccesses   SharedAccess[]
+  activityLogs     ActivityLog[]
+
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@map("users")
+}
+
+// -------------------------------------------------------------
+// FOLDERS (Hierarchical Tree)
+// -------------------------------------------------------------
+model Folder {
+  id             String          @id @default(uuid())
+  name           String
+  color          String?         @default("#4285F4") // UI color indicator
+  
+  // Hierarchy: null parentId indicates root level
+  parentId       String?
+  parent         Folder?         @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  subFolders     Folder[]        @relation("FolderHierarchy")
+
+  ownerId        String
+  owner          User            @relation("FolderOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  files          File[]
+  sharedAccesses SharedAccess[]
+  shareLinks     ShareLink[]
+
+  isStarred      Boolean         @default(false)
+  isTrashed      Boolean         @default(false)
+  trashedAt      DateTime?
+
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([ownerId, parentId])
+  @@index([ownerId, isTrashed])
+  @@map("folders")
+}
+
+// -------------------------------------------------------------
+// FILES
+// -------------------------------------------------------------
+model File {
+  id             String          @id @default(uuid())
+  name           String          // Display name (e.g. "Report.pdf")
+  originalName   String          // Original uploaded filename
+  mimeType       String          // e.g. "image/png", "application/pdf", "video/mp4"
+  size           BigInt          // Size in bytes
+  storageKey     String          // Local disk relative path or S3 key
+  checksum       String?         // SHA-256 for integrity and deduplication
+
+  folderId       String?
+  folder         Folder?         @relation(fields: [folderId], references: [id], onDelete: SetNull)
+
+  ownerId        String
+  owner          User            @relation("FileOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  sharedAccesses SharedAccess[]
+  shareLinks     ShareLink[]
+  versions       FileVersion[]
+
+  isStarred      Boolean         @default(false)
+  isTrashed      Boolean         @default(false)
+  trashedAt      DateTime?
+
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([ownerId, folderId])
+  @@index([ownerId, isTrashed])
+  @@index([mimeType])
+  @@map("files")
+}
+
+// -------------------------------------------------------------
+// FILE VERSIONING (Keep previous revisions)
+// -------------------------------------------------------------
+model FileVersion {
+  id          String   @id @default(uuid())
+  fileId      String
+  file        File     @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  versionNum  Int
+  storageKey  String
+  size        BigInt
+  createdAt   DateTime @default(now())
+
+  @@map("file_versions")
+}
+
+// -------------------------------------------------------------
+// GRANULAR DIRECT ACCESS SHARING (By User Email)
+// -------------------------------------------------------------
+model SharedAccess {
+  id             String         @id @default(uuid())
+  role           PermissionRole @default(VIEWER)
+
+  userId         String
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  fileId         String?
+  file           File?          @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  
+  folderId       String?
+  folder         Folder?        @relation(fields: [folderId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime       @default(now())
+
+  @@unique([userId, fileId])
+  @@unique([userId, folderId])
+  @@map("shared_accesses")
+}
+
+// -------------------------------------------------------------
+// PUBLIC SHARE LINKS (Tokens with optional password & expiration)
+// -------------------------------------------------------------
+model ShareLink {
+  id             String         @id @default(uuid())
+  token          String         @unique
+  role           PermissionRole @default(VIEWER)
+
+  passwordHash   String?
+  expiresAt      DateTime?
+  maxDownloads   Int?
+  downloadCount  Int            @default(0)
+
+  fileId         String?
+  file           File?          @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  folderId       String?
+  folder         Folder?        @relation(fields: [folderId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime       @default(now())
+
+  @@map("share_links")
+}
+
+// -------------------------------------------------------------
+// AUDIT & ACTIVITY LOGS
+// -------------------------------------------------------------
+model ActivityLog {
+  id           String         @id @default(uuid())
+  userId       String
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action       ActivityAction
+  resourceType ResourceType
+  resourceId   String
+  details      Json?
+  createdAt    DateTime       @default(now())
+
+  @@index([userId, createdAt])
+  @@map("activity_logs")
+}
